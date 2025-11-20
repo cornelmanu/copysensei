@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { getUser, setUser } from '@/lib/storage';
 import { User } from '@/types';
 import { toast } from 'sonner';
+import { Zap } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -36,13 +37,18 @@ const Login = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold">CopySensei</CardTitle>
-          <CardDescription>Sign in to your account</CardDescription>
+      <Card className="w-full max-w-md shadow-lg">
+        <CardHeader className="space-y-3 text-center">
+          <div className="flex items-center justify-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <Zap className="h-6 w-6 text-primary" />
+            </div>
+            <CardTitle className="text-3xl font-bold">CopySensei</CardTitle>
+          </div>
+          <CardDescription className="text-base">Sign in to your account</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -51,6 +57,7 @@ const Login = () => {
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                className="h-11"
               />
             </div>
             <div className="space-y-2">
@@ -61,12 +68,13 @@ const Login = () => {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className="h-11"
               />
             </div>
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full h-11 text-base">
               Sign In
             </Button>
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="text-center text-sm text-muted-foreground pt-2">
               Demo: Use any email/password to login
             </p>
           </form>
