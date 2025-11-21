@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Zap } from 'lucide-react';
+import { TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { setUser } from '@/lib/storage';
 const Login = () => {
@@ -90,7 +90,7 @@ const Login = () => {
         <CardHeader className="space-y-3 text-center">
           <div className="flex items-center justify-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <Zap className="h-6 w-6 text-primary" />
+              <TrendingUp className="h-6 w-6 text-primary" />
             </div>
             <CardTitle className="text-3xl font-bold">CopySensei</CardTitle>
           </div>
