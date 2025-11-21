@@ -14,7 +14,177 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          credits_used: number
+          id: string
+          message_type: Database["public"]["Enums"]["message_type"]
+          project_id: string
+          role: Database["public"]["Enums"]["message_role"]
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          credits_used?: number
+          id?: string
+          message_type?: Database["public"]["Enums"]["message_type"]
+          project_id: string
+          role: Database["public"]["Enums"]["message_role"]
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          credits_used?: number
+          id?: string
+          message_type?: Database["public"]["Enums"]["message_type"]
+          project_id?: string
+          role?: Database["public"]["Enums"]["message_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      copy_generations: {
+        Row: {
+          created_at: string
+          credits_used: number
+          generated_copy: string
+          id: string
+          project_id: string
+          prompt: string
+        }
+        Insert: {
+          created_at?: string
+          credits_used?: number
+          generated_copy: string
+          id?: string
+          project_id: string
+          prompt: string
+        }
+        Update: {
+          created_at?: string
+          credits_used?: number
+          generated_copy?: string
+          id?: string
+          project_id?: string
+          prompt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "copy_generations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          content: string
+          file_size: number
+          filename: string
+          id: string
+          project_id: string
+          uploaded_at: string
+        }
+        Insert: {
+          content: string
+          file_size?: number
+          filename: string
+          id?: string
+          project_id: string
+          uploaded_at?: string
+        }
+        Update: {
+          content?: string
+          file_size?: number
+          filename?: string
+          id?: string
+          project_id?: string
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          credits: number
+          email: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          credits?: number
+          email: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          email?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          created_at: string
+          custom_notes: string | null
+          id: string
+          name: string
+          research_data: Json | null
+          tone_of_voice: Database["public"]["Enums"]["tone_of_voice"]
+          updated_at: string
+          user_id: string
+          website_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          custom_notes?: string | null
+          id?: string
+          name: string
+          research_data?: Json | null
+          tone_of_voice?: Database["public"]["Enums"]["tone_of_voice"]
+          updated_at?: string
+          user_id: string
+          website_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          custom_notes?: string | null
+          id?: string
+          name?: string
+          research_data?: Json | null
+          tone_of_voice?: Database["public"]["Enums"]["tone_of_voice"]
+          updated_at?: string
+          user_id?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +193,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      message_role: "user" | "assistant" | "system"
+      message_type: "chat" | "copy_generation" | "database_update"
+      tone_of_voice:
+        | "professional"
+        | "casual"
+        | "friendly"
+        | "authoritative"
+        | "playful"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +327,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      message_role: ["user", "assistant", "system"],
+      message_type: ["chat", "copy_generation", "database_update"],
+      tone_of_voice: [
+        "professional",
+        "casual",
+        "friendly",
+        "authoritative",
+        "playful",
+      ],
+    },
   },
 } as const
