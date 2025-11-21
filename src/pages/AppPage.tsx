@@ -14,19 +14,27 @@ const AppPage = () => {
 
   useEffect(() => {
     // Check authentication
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!session) {
         navigate('/');
         return;
       }
       
-      // Store user in localStorage for compatibility
-      setUser({
-        id: session.user.id,
-        email: session.user.email!,
-        credits: 5,
-        createdAt: new Date().toISOString(),
-      });
+      // Fetch profile from database
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .maybeSingle();
+
+      if (profile) {
+        setUser({
+          id: profile.user_id,
+          email: profile.email,
+          credits: profile.credits,
+          createdAt: profile.created_at,
+        });
+      }
 
       const projectId = getCurrentProjectId();
       setCurrentProjectId(projectId);

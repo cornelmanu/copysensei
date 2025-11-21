@@ -16,28 +16,46 @@ const Login = () => {
 
   useEffect(() => {
     // Check if user is already logged in
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email!,
-          credits: 5,
-          createdAt: new Date().toISOString(),
-        });
-        navigate('/app');
+        // Fetch profile from database
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+
+        if (profile) {
+          setUser({
+            id: profile.user_id,
+            email: profile.email,
+            credits: profile.credits,
+            createdAt: profile.created_at,
+          });
+          navigate('/app');
+        }
       }
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
-        setUser({
-          id: session.user.id,
-          email: session.user.email!,
-          credits: 5,
-          createdAt: new Date().toISOString(),
-        });
-        navigate('/app');
+        // Fetch profile from database
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+
+        if (profile) {
+          setUser({
+            id: profile.user_id,
+            email: profile.email,
+            credits: profile.credits,
+            createdAt: profile.created_at,
+          });
+          navigate('/app');
+        }
       }
     });
 
