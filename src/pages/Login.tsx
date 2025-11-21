@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { Zap, TrendingUp } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { setUser } from '@/lib/storage';
 const Login = () => {
@@ -97,7 +97,7 @@ const Login = () => {
           <CardDescription className="text-base font-sans font-medium">Copy Clarity, Guided by Your Sensei 🥷🏻 </CardDescription>
         </CardHeader>
         <CardContent>
-          <TrendingUp onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)} className="h-11" disabled={loading} required />
@@ -105,7 +105,7 @@ const Login = () => {
             <Button type="submit" className="w-full h-11 text-base" disabled={loading}>
               {loading ? 'Sending...' : 'Send Magic Link'}
             </Button>
-          </TrendingUp>
+          </form>
         </CardContent>
       </Card>
     </div>;
