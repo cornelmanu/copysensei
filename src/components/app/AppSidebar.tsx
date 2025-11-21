@@ -8,6 +8,7 @@ import { Project } from '@/types';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import NewProjectDialog from './NewProjectDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 interface AppSidebarProps {
   currentProjectId: string | null;
@@ -23,7 +24,17 @@ const AppSidebar = ({ currentProjectId, onProjectChange }: AppSidebarProps) => {
   useEffect(() => {
     const user = getUser();
     if (user) {
-      setCredits(user.credits);
+      // Fetch credits from database
+      supabase
+        .from('profiles')
+        .select('credits')
+        .eq('user_id', user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setCredits(data.credits);
+          }
+        });
     }
     loadProjects();
   }, []);
