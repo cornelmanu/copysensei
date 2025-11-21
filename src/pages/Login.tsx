@@ -1,38 +1,43 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { getUser, setUser } from '@/lib/storage';
-import { User } from '@/types';
 import { toast } from 'sonner';
 import { Zap } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 const Login = () => {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
-      toast.error('Please enter email and password');
+    if (!email) {
+      toast.error('Please enter your email');
       return;
     }
 
-    // Mock authentication - in prototype, any login works
-    const user: User = {
-      id: crypto.randomUUID(),
-      email,
-      credits: 5,
-      createdAt: new Date().toISOString(),
-    };
+    setLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/app`,
+        },
+      });
 
-    setUser(user);
-    toast.success('Welcome to CopySensei!');
-    navigate('/app');
+      if (error) throw error;
+
+      toast.success('Check your email for the login link!');
+      setEmail('');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to send login email');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -58,25 +63,13 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-11"
+                disabled={loading}
+                required
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-11"
-              />
-            </div>
-            <Button type="submit" className="w-full h-11 text-base">
-              Sign In
+            <Button type="submit" className="w-full h-11 text-base" disabled={loading}>
+              {loading ? 'Sending...' : 'Send Magic Link'}
             </Button>
-            <p className="text-center text-sm text-muted-foreground pt-2">
-              Demo: Use any email/password to login
-            </p>
           </form>
         </CardContent>
       </Card>
