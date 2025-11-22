@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { saveProject, getUser, setCurrentProjectId, saveMessage } from '@/lib/storage';
 import { Project, ToneOfVoice, ChatMessage } from '@/types';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { Loader2 } from 'lucide-react';
 
 interface NewProjectDialogProps {
   open: boolean;
@@ -19,8 +21,9 @@ const NewProjectDialog = ({ open, onOpenChange, onSuccess, onProjectChange }: Ne
   const [name, setName] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [tone, setTone] = useState<ToneOfVoice>('professional');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!name.trim() || !websiteUrl.trim()) {
@@ -29,43 +32,95 @@ const NewProjectDialog = ({ open, onOpenChange, onSuccess, onProjectChange }: Ne
     }
 
     const user = getUser();
-    if (!user) return;
+    if (!user) {
+      toast.error('User not found. Please log in again.');
+      return;
+    }
 
-    const project: Project = {
-      id: crypto.randomUUID(),
-      userId: user.id,
-      name: name.trim(),
-      websiteUrl: websiteUrl.trim(),
-      toneOfVoice: tone,
-      researchData: null,
-      customNotes: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    setIsLoading(true);
 
-    saveProject(project);
-    setCurrentProjectId(project.id);
+    try {
+      // Create project in database
+      const { data: newProject, error: projectError } = await supabase
+        .from('projects')
+        .insert({
+          user_id: user.id,
+          name: name.trim(),
+          website_url: websiteUrl.trim(),
+          tone_of_voice: tone,
+          custom_notes: '',
+        })
+        .select()
+        .single();
 
-    // Add welcome message
-    const welcomeMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      projectId: project.id,
-      role: 'system',
-      content: `Project created! Research will be added when integrated with APIs. Add documents or generate your first copy.`,
-      messageType: 'database_update',
-      creditsUsed: 0,
-      createdAt: new Date().toISOString(),
-    };
-    saveMessage(welcomeMessage);
+      if (projectError) throw projectError;
 
-    toast.success('Project created successfully!');
-    
-    setName('');
-    setWebsiteUrl('');
-    setTone('professional');
-    
-    onProjectChange(project.id);
-    onSuccess();
+      // Save to localStorage for compatibility
+      const project: Project = {
+        id: newProject.id,
+        userId: newProject.user_id,
+        name: newProject.name,
+        websiteUrl: newProject.website_url || '',
+        toneOfVoice: newProject.tone_of_voice,
+        researchData: newProject.research_data,
+        customNotes: newProject.custom_notes || '',
+        createdAt: newProject.created_at,
+        updatedAt: newProject.updated_at,
+      };
+      saveProject(project);
+      setCurrentProjectId(project.id);
+
+      toast.success('Project created! Fetching research...');
+
+      // Fetch research in background
+      const { data: researchResult, error: researchError } = await supabase.functions.invoke('fetch-research', {
+        body: { 
+          websiteUrl: websiteUrl.trim(), 
+          projectName: name.trim() 
+        }
+      });
+
+      if (researchError) {
+        console.error('Research fetch error:', researchError);
+        toast.error('Failed to fetch research. You can try again later.');
+      } else if (researchResult?.researchData) {
+        // Update project with research data
+        await supabase
+          .from('projects')
+          .update({ research_data: researchResult.researchData })
+          .eq('id', newProject.id);
+
+        // Update localStorage
+        project.researchData = researchResult.researchData;
+        saveProject(project);
+
+        toast.success('Research data added successfully!');
+      }
+
+      // Add welcome message
+      const welcomeMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        projectId: project.id,
+        role: 'system',
+        content: `Project created successfully! ${researchResult?.researchData ? 'Research data has been added.' : ''} You can now add documents or start generating copy.`,
+        messageType: 'database_update',
+        creditsUsed: 0,
+        createdAt: new Date().toISOString(),
+      };
+      saveMessage(welcomeMessage);
+
+      setName('');
+      setWebsiteUrl('');
+      setTone('professional');
+      
+      onProjectChange(project.id);
+      onSuccess();
+    } catch (error) {
+      console.error('Error creating project:', error);
+      toast.error('Failed to create project. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -111,8 +166,15 @@ const NewProjectDialog = ({ open, onOpenChange, onSuccess, onProjectChange }: Ne
               </SelectContent>
             </Select>
           </div>
-          <Button type="submit" className="w-full">
-            Create Project
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              'Create Project'
+            )}
           </Button>
         </form>
       </DialogContent>
