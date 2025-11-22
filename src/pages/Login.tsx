@@ -21,9 +21,20 @@ const Login = () => {
     }) => {
       if (session?.user) {
         // Fetch profile from database
-        const {
+        let {
           data: profile
         } = await supabase.from('profiles').select('*').eq('user_id', session.user.id).maybeSingle();
+        
+        // If profile doesn't exist, create it
+        if (!profile && session.user.email) {
+          const { data: newProfile } = await supabase.from('profiles').insert({
+            user_id: session.user.id,
+            email: session.user.email,
+            credits: 5
+          }).select().single();
+          profile = newProfile;
+        }
+        
         if (profile) {
           setUser({
             id: profile.user_id,
@@ -44,9 +55,20 @@ const Login = () => {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         // Fetch profile from database
-        const {
+        let {
           data: profile
         } = await supabase.from('profiles').select('*').eq('user_id', session.user.id).maybeSingle();
+        
+        // If profile doesn't exist, create it
+        if (!profile && session.user.email) {
+          const { data: newProfile } = await supabase.from('profiles').insert({
+            user_id: session.user.id,
+            email: session.user.email,
+            credits: 5
+          }).select().single();
+          profile = newProfile;
+        }
+        
         if (profile) {
           setUser({
             id: profile.user_id,
