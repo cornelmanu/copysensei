@@ -21,11 +21,21 @@ const AppPage = () => {
       }
       
       // Fetch profile from database
-      const { data: profile } = await supabase
+      let { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', session.user.id)
         .maybeSingle();
+
+      // If profile doesn't exist, create it
+      if (!profile && session.user.email) {
+        const { data: newProfile } = await supabase.from('profiles').insert({
+          user_id: session.user.id,
+          email: session.user.email,
+          credits: 5
+        }).select().single();
+        profile = newProfile;
+      }
 
       if (profile) {
         setUser({
