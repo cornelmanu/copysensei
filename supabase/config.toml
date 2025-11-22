@@ -1,1 +1,7 @@
 project_id = "urhxzehjmtfueqxpgrcg"
+
+[functions.fetch-research]
+verify_jwt = true
+
+[functions.generate-copy]
+verify_jwt = true
