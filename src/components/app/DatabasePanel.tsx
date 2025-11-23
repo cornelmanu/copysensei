@@ -175,9 +175,18 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
                 Refresh
               </Button>
             </div>
-            <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md">
+            <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md max-h-[300px] overflow-y-auto">
               {project.researchData ? (
-                <p>Research data loaded</p>
+                <div className="whitespace-pre-wrap">
+                  {project.researchData
+                    .replace(/#{1,6}\s/g, '')
+                    .replace(/\*\*/g, '')
+                    .replace(/__/g, '')
+                    .replace(/\*/g, '')
+                    .replace(/_/g, '')
+                    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
+                    .trim()}
+                </div>
               ) : (
                 <p>No research data yet. Click refresh to analyze website.</p>
               )}
