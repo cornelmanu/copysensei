@@ -70,7 +70,19 @@ const NewProjectDialog = ({ open, onOpenChange, onSuccess, onProjectChange }: Ne
       saveProject(project);
       setCurrentProjectId(project.id);
 
-      toast.success('Project created! Fetching research...');
+      toast.success('Project created successfully!');
+
+      // Add initial message
+      const initialMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        projectId: project.id,
+        role: 'system',
+        content: 'Project created! Gathering research data...',
+        messageType: 'database_update',
+        creditsUsed: 0,
+        createdAt: new Date().toISOString(),
+      };
+      saveMessage(initialMessage);
 
       // Fetch research in background
       const { data: researchResult, error: researchError } = await supabase.functions.invoke('fetch-research', {
@@ -82,7 +94,19 @@ const NewProjectDialog = ({ open, onOpenChange, onSuccess, onProjectChange }: Ne
 
       if (researchError) {
         console.error('Research fetch error:', researchError);
-        toast.error('Failed to fetch research. You can try again later.');
+        
+        const errorMessage: ChatMessage = {
+          id: crypto.randomUUID(),
+          projectId: project.id,
+          role: 'system',
+          content: '⚠️ Failed to fetch research data. You can add custom notes or try refreshing later.',
+          messageType: 'database_update',
+          creditsUsed: 0,
+          createdAt: new Date().toISOString(),
+        };
+        saveMessage(errorMessage);
+        
+        toast.error('Failed to fetch research');
       } else if (researchResult?.researchData) {
         // Update project with research data
         await supabase
@@ -94,20 +118,19 @@ const NewProjectDialog = ({ open, onOpenChange, onSuccess, onProjectChange }: Ne
         project.researchData = researchResult.researchData;
         saveProject(project);
 
-        toast.success('Research data added successfully!');
-      }
+        const successMessage: ChatMessage = {
+          id: crypto.randomUUID(),
+          projectId: project.id,
+          role: 'system',
+          content: '✅ Research data gathered successfully! You can now add documents or start generating copy.',
+          messageType: 'database_update',
+          creditsUsed: 0,
+          createdAt: new Date().toISOString(),
+        };
+        saveMessage(successMessage);
 
-      // Add welcome message
-      const welcomeMessage: ChatMessage = {
-        id: crypto.randomUUID(),
-        projectId: project.id,
-        role: 'system',
-        content: `Project created successfully! ${researchResult?.researchData ? 'Research data has been added.' : ''} You can now add documents or start generating copy.`,
-        messageType: 'database_update',
-        creditsUsed: 0,
-        createdAt: new Date().toISOString(),
-      };
-      saveMessage(welcomeMessage);
+        toast.success('Research complete!');
+      }
 
       setName('');
       setWebsiteUrl('');
