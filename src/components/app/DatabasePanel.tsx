@@ -10,6 +10,7 @@ import { X, RefreshCw, Upload, FileText, Trash2 } from 'lucide-react';
 import { getProject, saveProject, getProjectDocuments, saveDocument, deleteDocument } from '@/lib/storage';
 import { Project, ToneOfVoice, Document } from '@/types';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DatabasePanelProps {
   projectId: string;
@@ -21,6 +22,7 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [newDocContent, setNewDocContent] = useState('');
   const [newDocName, setNewDocName] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     loadProject();
@@ -80,6 +82,45 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
     toast.success('Document deleted');
   };
 
+  const handleRefreshResearch = async () => {
+    if (!project) return;
+    
+    setIsRefreshing(true);
+    toast.info('Gathering research data...');
+
+    try {
+      const { data: researchResult, error: researchError } = await supabase.functions.invoke('fetch-research', {
+        body: { 
+          websiteUrl: project.websiteUrl, 
+          projectName: project.name 
+        }
+      });
+
+      if (researchError) {
+        console.error('Research fetch error:', researchError);
+        toast.error('Failed to fetch research');
+      } else if (researchResult?.researchData) {
+        // Update project in database
+        await supabase
+          .from('projects')
+          .update({ research_data: researchResult.researchData })
+          .eq('id', projectId);
+
+        // Update localStorage
+        const updated = { ...project, researchData: researchResult.researchData };
+        saveProject(updated);
+        setProject(updated);
+
+        toast.success('Research data refreshed successfully!');
+      }
+    } catch (error) {
+      console.error('Error refreshing research:', error);
+      toast.error('Failed to refresh research');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   if (!project) return null;
 
   return (
@@ -124,8 +165,13 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="font-medium text-sm text-card-foreground">Research</h4>
-              <Button variant="ghost" size="sm">
-                <RefreshCw className="w-3 h-3 mr-1" />
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={handleRefreshResearch}
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={`w-3 h-3 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
             </div>
