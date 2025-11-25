@@ -27,9 +27,11 @@ serve(async (req) => {
         ? `CRITICAL: You MUST first search for and analyze the website "${websiteUrl}" to understand what "${company}" actually does. Do NOT search for just the company name "${company}" alone as this may return incorrect companies with similar names.`
         : `CRITICAL: Search for the exact company name "${company}" in quotes to avoid similar company names.`;
 
-      return `As an expert business analyst and market researcher with over 20 years of experience, I need you to first research the company "${company}" using web search to gather accurate, current information, then provide a comprehensive ICP analysis. Prioritize the link received if there's any.
+      return `As an expert business analyst and market researcher with over 20 years of experience, I need you to first research the company "${company}" using web search to gather accurate, current information, then provide a comprehensive ICP analysis.
 
 ${searchInstruction}
+
+CRITICAL: Your response MUST contain ONLY valid JSON. Do not include any explanatory text, markdown formatting, or anything else outside the JSON object.
 
 VERIFICATION STEP: Before proceeding with analysis, you MUST:
 a. Search for the company using web search
@@ -38,7 +40,7 @@ b. Verify you have the correct company by checking:
    ${websiteUrl ? `- The website URL matches or relates to "${websiteUrl}"` : ''}
    - The business description aligns with what you'd expect
 c. If you find multiple companies with similar names, clearly identify which one you're analyzing
-d. If the company doesn't exist or you can't find reliable information, state this clearly
+d. If the company doesn't exist or you can't find reliable information, state this clearly in the company_overview
 
 STEP 1: Research the company thoroughly using web search to find:
 - What the company actually does (products/services)
@@ -48,7 +50,7 @@ STEP 1: Research the company thoroughly using web search to find:
 - Recent news and developments
 - Main competitors
 
-STEP 2: Based on your research findings, provide a detailed JSON response with the following structure:
+STEP 2: Based on your research findings, provide ONLY a valid JSON response with the following structure (no other text):
 
 {
   "company_overview": "Detailed description of the company, what they do, their market position, and key characteristics based on your research",
@@ -111,7 +113,7 @@ STEP 2: Based on your research findings, provide a detailed JSON response with t
   "key_insights": "Strategic recommendations and key takeaways for successful customer acquisition based on your research"
 }
 
-Please provide 2-3 distinct ICP segments, comprehensive GTM strategies for each, detailed messaging frameworks, and channel recommendations. Make sure all information is specific, actionable, and based on realistic market analysis from your research findings.`;
+IMPORTANT: Provide 2-3 distinct ICP segments, comprehensive GTM strategies for each, detailed messaging frameworks, and channel recommendations. Return ONLY the JSON object, nothing else.`;
     };
 
     const prompt = generateAnalysisPrompt(projectName, websiteUrl);
@@ -127,7 +129,7 @@ Please provide 2-3 distinct ICP segments, comprehensive GTM strategies for each,
         messages: [
           {
             role: 'system',
-            content: 'You are a business research assistant. Provide detailed, accurate research about businesses and websites.'
+            content: 'You are a business research assistant. You MUST respond with ONLY valid JSON, no additional text or formatting.'
           },
           {
             role: 'user',
@@ -136,7 +138,7 @@ Please provide 2-3 distinct ICP segments, comprehensive GTM strategies for each,
         ],
         temperature: 0.2,
         top_p: 0.9,
-        max_tokens: 2000,
+        max_tokens: 4000, // Increased to ensure complete JSON
         return_images: false,
         return_related_questions: false,
         search_recency_filter: 'month',
@@ -150,7 +152,28 @@ Please provide 2-3 distinct ICP segments, comprehensive GTM strategies for each,
     }
 
     const data = await response.json();
-    const researchData = data.choices[0].message.content;
+    let researchData = data.choices[0].message.content;
+
+    // Try to extract just the JSON part if there's extra text
+    try {
+      // Remove markdown code blocks if present
+      const jsonMatch = researchData.match(/```json\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) {
+        researchData = jsonMatch[1];
+      }
+
+      // Try to extract JSON object
+      const objectMatch = researchData.match(/\{[\s\S]*\}/);
+      if (objectMatch) {
+        researchData = objectMatch[0];
+      }
+
+      // Validate it's proper JSON
+      JSON.parse(researchData);
+    } catch (e) {
+      console.error('Failed to parse JSON from response:', e);
+      // Keep original if parsing fails
+    }
 
     console.log('Research completed successfully');
 
