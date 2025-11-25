@@ -122,3 +122,6 @@ export const saveGeneration = (generation: CopyGeneration): void => {
   generations.push(generation);
   localStorage.setItem(KEYS.GENERATIONS, JSON.stringify(generations));
 };
+export const updateUser = (user: User): void => {
+  setUser(user);
+};
