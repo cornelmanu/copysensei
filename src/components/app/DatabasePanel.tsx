@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { X, RefreshCw, Upload, FileText, Trash2 } from 'lucide-react';
+import { X, RefreshCw, Upload, FileText, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { getProject, saveProject, getProjectDocuments, saveDocument, deleteDocument } from '@/lib/storage';
 import { Project, ToneOfVoice, Document } from '@/types';
 import { toast } from 'sonner';
@@ -23,6 +23,7 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
   const [newDocContent, setNewDocContent] = useState('');
   const [newDocName, setNewDocName] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadProject();
@@ -121,7 +122,117 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
     }
   };
 
+  const toggleSection = (key: string) => {
+    const newExpanded = new Set(expandedSections);
+    if (newExpanded.has(key)) {
+      newExpanded.delete(key);
+    } else {
+      newExpanded.add(key);
+    }
+    setExpandedSections(newExpanded);
+  };
+
+  const parseResearchData = (data: string) => {
+    try {
+      // Try to extract JSON from markdown code blocks
+      const jsonMatch = data.match(/```json\n([\s\S]*?)\n```/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[1]);
+      }
+      
+      // Try to parse directly
+      return JSON.parse(data);
+    } catch (e) {
+      // If not valid JSON, return null
+      return null;
+    }
+  };
+
+  const renderJsonValue = (value: any, depth: number = 0): JSX.Element => {
+    if (value === null || value === undefined) {
+      return <span className="text-muted-foreground italic">null</span>;
+    }
+
+    if (typeof value === 'boolean') {
+      return <span className="text-blue-600 dark:text-blue-400">{value.toString()}</span>;
+    }
+
+    if (typeof value === 'number') {
+      return <span className="text-green-600 dark:text-green-400">{value}</span>;
+    }
+
+    if (typeof value === 'string') {
+      return <span className="text-foreground">{value}</span>;
+    }
+
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return <span className="text-muted-foreground">[]</span>;
+      }
+      
+      return (
+        <div className="space-y-1">
+          {value.map((item, index) => (
+            <div key={index} className="pl-4 border-l-2 border-border">
+              <div className="flex gap-2">
+                <span className="text-muted-foreground text-xs">[{index}]</span>
+                <div className="flex-1">{renderJsonValue(item, depth + 1)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    if (typeof value === 'object') {
+      const keys = Object.keys(value);
+      if (keys.length === 0) {
+        return <span className="text-muted-foreground">{'{}'}</span>;
+      }
+
+      return (
+        <div className="space-y-2">
+          {keys.map((key) => {
+            const itemKey = `${depth}-${key}`;
+            const isExpanded = expandedSections.has(itemKey);
+            const hasNested = typeof value[key] === 'object' && value[key] !== null;
+
+            return (
+              <div key={key} className="space-y-1">
+                <div 
+                  className={`flex items-start gap-2 ${hasNested ? 'cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1' : ''}`}
+                  onClick={() => hasNested && toggleSection(itemKey)}
+                >
+                  {hasNested && (
+                    isExpanded ? 
+                      <ChevronDown className="w-3 h-3 mt-1 flex-shrink-0 text-muted-foreground" /> : 
+                      <ChevronRight className="w-3 h-3 mt-1 flex-shrink-0 text-muted-foreground" />
+                  )}
+                  <span className="text-blue-600 dark:text-blue-400 font-medium text-xs flex-shrink-0">
+                    {key}:
+                  </span>
+                  {!hasNested && (
+                    <div className="flex-1 text-xs break-words">{renderJsonValue(value[key], depth + 1)}</div>
+                  )}
+                </div>
+                {hasNested && isExpanded && (
+                  <div className="pl-5 border-l-2 border-border ml-1">
+                    <div className="text-xs">{renderJsonValue(value[key], depth + 1)}</div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    return <span>{String(value)}</span>;
+  };
+
   if (!project) return null;
+
+  const parsedResearch = project.researchData ? parseResearchData(project.researchData) : null;
 
   return (
     <div className="w-80 bg-card border-l border-border flex flex-col">
@@ -175,20 +286,17 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
                 Refresh
               </Button>
             </div>
-            <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md max-h-[300px] overflow-y-auto">
-              {project.researchData ? (
-                <div className="whitespace-pre-wrap">
-                  {project.researchData
-                    .replace(/#{1,6}\s/g, '')
-                    .replace(/\*\*/g, '')
-                    .replace(/__/g, '')
-                    .replace(/\*/g, '')
-                    .replace(/_/g, '')
-                    .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
-                    .trim()}
+            <div className="text-xs bg-muted p-3 rounded-md max-h-[500px] overflow-y-auto">
+              {parsedResearch ? (
+                <div className="space-y-2">
+                  {renderJsonValue(parsedResearch)}
+                </div>
+              ) : project.researchData ? (
+                <div className="whitespace-pre-wrap text-muted-foreground">
+                  {project.researchData}
                 </div>
               ) : (
-                <p>No research data yet. Click refresh to analyze website.</p>
+                <p className="text-muted-foreground">No research data yet. Click refresh to analyze website.</p>
               )}
             </div>
           </div>
