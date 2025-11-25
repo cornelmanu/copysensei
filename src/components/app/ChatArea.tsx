@@ -123,7 +123,7 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [messages, isLoading]);
 
   const shouldCostCredits = (userMessage: string): boolean => {
     const copyGenerationKeywords = [
@@ -298,9 +298,9 @@ Please respond helpfully. If they're asking to update project details or asking 
   const user = getUser();
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col h-full">
       {/* Header */}
-      <div className="border-b border-border p-4 flex items-center justify-between">
+      <div className="border-b border-border p-4 flex items-center justify-between flex-shrink-0">
         <div>
           <h2 className="text-lg font-semibold text-foreground">{project?.name}</h2>
           <p className="text-sm text-muted-foreground">{project?.websiteUrl}</p>
@@ -384,7 +384,7 @@ Please respond helpfully. If they're asking to update project details or asking 
       </div>
 
       {/* Input */}
-      <div className="border-t border-border p-4">
+      <div className="border-t border-border p-4 flex-shrink-0">
         <div className="max-w-3xl mx-auto space-y-3">
           <div className="flex gap-2">
             <Textarea
