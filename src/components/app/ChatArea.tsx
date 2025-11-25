@@ -19,6 +19,7 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   // Simple markdown-like formatter with React elements
@@ -120,9 +121,18 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
   }, [projectId]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    // Scroll to bottom when messages change or loading state changes
+    const scrollToBottom = () => {
+      if (scrollContainerRef.current) {
+        const scrollElement = scrollContainerRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        if (scrollElement) {
+          scrollElement.scrollTop = scrollElement.scrollHeight;
+        }
+      }
+    };
+
+    // Use setTimeout to ensure DOM has updated
+    setTimeout(scrollToBottom, 100);
   }, [messages, isLoading]);
 
   const shouldCostCredits = (userMessage: string): boolean => {
