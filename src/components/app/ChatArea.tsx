@@ -24,7 +24,9 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
 
   // Simple markdown-like formatter with React elements
   const FormattedMessage = ({ content }: { content: string }) => {
-    const lines = content.split('\n');
+    // Remove Perplexity citations [1], [2], etc.
+    const cleanContent = content.replace(/\[\d+\]/g, '');
+    const lines = cleanContent.split('\n');
     const elements: JSX.Element[] = [];
     let listItems: string[] = [];
     let listType: 'ul' | 'ol' | null = null;
