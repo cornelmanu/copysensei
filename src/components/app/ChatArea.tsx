@@ -320,8 +320,9 @@ Please respond helpfully. If they're asking to update project details or asking 
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        <div className="space-y-4 max-w-3xl mx-auto">
+      <div className="flex-1 overflow-hidden">
+        <ScrollArea className="h-full p-4">
+          <div className="space-y-4 max-w-3xl mx-auto" ref={scrollRef}>
           {messages.length === 0 ? (
             <div className="text-center py-12">
               <Sparkles className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
@@ -380,6 +381,7 @@ Please respond helpfully. If they're asking to update project details or asking 
           )}
         </div>
       </ScrollArea>
+      </div>
 
       {/* Input */}
       <div className="border-t border-border p-4">
