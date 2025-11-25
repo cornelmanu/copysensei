@@ -240,6 +240,10 @@ Please respond helpfully. If they're asking to update project details or asking 
         throw new Error('No response from AI');
       }
 
+      // Clean up Perplexity citations like [1], [2], etc.
+      let cleanedContent = data.generatedCopy;
+      cleanedContent = cleanedContent.replace(/\[\d+\]/g, '');
+
       // Deduct credits if needed
       const creditsUsed = willCostCredits ? 1 : 0;
       if (creditsUsed > 0) {
@@ -266,7 +270,7 @@ Please respond helpfully. If they're asking to update project details or asking 
         id: crypto.randomUUID(),
         projectId,
         role: 'assistant',
-        content: data.generatedCopy,
+        content: cleanedContent,
         messageType: willCostCredits ? 'copy_generation' : 'chat',
         creditsUsed,
         createdAt: new Date().toISOString(),
