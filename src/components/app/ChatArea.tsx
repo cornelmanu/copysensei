@@ -21,55 +21,93 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  // Format markdown-like text to HTML
-  const formatMessage = (text: string): string => {
-    let formatted = text;
-    
-    // Convert **bold** to <strong>
-    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-    
-    // Convert *italic* to <em>
-    formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
-    
-    // Convert ### Headers to h3
-    formatted = formatted.replace(/^### (.*?)$/gm, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>');
-    
-    // Convert ## Headers to h2
-    formatted = formatted.replace(/^## (.*?)$/gm, '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>');
-    
-    // Convert # Headers to h1
-    formatted = formatted.replace(/^# (.*?)$/gm, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>');
-    
-    // Convert bullet points (- item or * item)
-    formatted = formatted.replace(/^[•\-\*] (.+)$/gm, '<li class="ml-4">$1</li>');
-    
-    // Wrap consecutive <li> items in <ul>
-    formatted = formatted.replace(/(<li.*?>.*?<\/li>\s*)+/gs, '<ul class="list-disc space-y-1 my-2">const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();</ul>');
-    
-    // Convert numbered lists (1. item, 2. item, etc.)
-    formatted = formatted.replace(/^\d+\.\s+(.+)$/gm, '<li class="ml-4">$1</li>');
-    formatted = formatted.replace(/(<li class="ml-4">.*?<\/li>\s*)+/gs, (match) => {
-      if (!match.includes('list-disc')) {
-        return `<ol class="list-decimal space-y-1 my-2">${match}</ol>`;
+  // Simple markdown-like formatter with React elements
+  const FormattedMessage = ({ content }: { content: string }) => {
+    const lines = content.split('\n');
+    const elements: JSX.Element[] = [];
+    let listItems: string[] = [];
+    let listType: 'ul' | 'ol' | null = null;
+
+    const flushList = () => {
+      if (listItems.length > 0 && listType) {
+        const ListTag = listType;
+        elements.push(
+          <ListTag key={elements.length} className={listType === 'ul' ? 'list-disc ml-6 my-2 space-y-1' : 'list-decimal ml-6 my-2 space-y-1'}>
+            {listItems.map((item, i) => (
+              <li key={i} dangerouslySetInnerHTML={{ __html: formatInline(item) }} />
+            ))}
+          </ListTag>
+        );
+        listItems = [];
+        listType = null;
       }
-      return match;
+    };
+
+    const formatInline = (text: string): string => {
+      return text
+        .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em class="italic">$1</em>')
+        .replace(/`(.+?)`/g, '<code class="bg-muted px-1 py-0.5 rounded text-sm">$1</code>');
+    };
+
+    lines.forEach((line, idx) => {
+      const trimmed = line.trim();
+
+      // Headers
+      if (trimmed.startsWith('###')) {
+        flushList();
+        elements.push(<h3 key={elements.length} className="text-base font-semibold mt-4 mb-2">{trimmed.replace(/^###\s*/, '')}</h3>);
+      } else if (trimmed.startsWith('##')) {
+        flushList();
+        elements.push(<h2 key={elements.length} className="text-lg font-semibold mt-4 mb-2">{trimmed.replace(/^##\s*/, '')}</h2>);
+      } else if (trimmed.startsWith('#')) {
+        flushList();
+        elements.push(<h1 key={elements.length} className="text-xl font-bold mt-4 mb-2">{trimmed.replace(/^#\s*/, '')}</h1>);
+      }
+      // Bullet points
+      else if (trimmed.match(/^[-*•]\s+/)) {
+        if (listType !== 'ul') {
+          flushList();
+          listType = 'ul';
+        }
+        listItems.push(trimmed.replace(/^[-*•]\s+/, ''));
+      }
+      // Numbered lists
+      else if (trimmed.match(/^\d+\.\s+/)) {
+        if (listType !== 'ol') {
+          flushList();
+          listType = 'ol';
+        }
+        listItems.push(trimmed.replace(/^\d+\.\s+/, ''));
+      }
+      // Horizontal rule
+      else if (trimmed === '---' || trimmed === '___') {
+        flushList();
+        elements.push(<hr key={elements.length} className="my-4 border-border" />);
+      }
+      // Empty line
+      else if (trimmed === '') {
+        flushList();
+        if (elements.length > 0 && elements[elements.length - 1].type !== 'br') {
+          elements.push(<div key={elements.length} className="h-2" />);
+        }
+      }
+      // Regular paragraph
+      else {
+        flushList();
+        elements.push(
+          <p 
+            key={elements.length} 
+            className="mb-2" 
+            dangerouslySetInnerHTML={{ __html: formatInline(trimmed) }} 
+          />
+        );
+      }
     });
-    
-    // Convert line breaks to <br> (but not in lists/headers)
-    formatted = formatted.replace(/\n\n/g, '</p><p class="mt-3">');
-    formatted = '<p>' + formatted + '</p>';
-    
-    // Clean up empty paragraphs
-    formatted = formatted.replace(/<p>\s*<\/p>/g, '');
-    formatted = formatted.replace(/<p>(<[uh]l|<h[123])/g, '$1');
-    formatted = formatted.replace(/(<\/[uh]l>|<\/h[123]>)<\/p>/g, '$1');
-    
-    return formatted;
+
+    flushList(); // Flush any remaining list
+
+    return <div className="space-y-1">{elements}</div>;
   };
 
   useEffect(() => {
@@ -310,22 +348,17 @@ Please respond helpfully. If they're asking to update project details or asking 
                         ? 'bg-chat-user text-foreground'
                         : message.role === 'system'
                         ? 'bg-chat-system text-muted-foreground text-sm'
-                        : 'bg-chat-assistant border border-border text-foreground prose prose-sm max-w-none dark:prose-invert'
+                        : 'bg-chat-assistant border border-border text-foreground'
                     }`}
                   >
                     {message.role === 'assistant' ? (
-                      <div 
-                        className="formatted-content"
-                        dangerouslySetInnerHTML={{ 
-                          __html: formatMessage(message.content) 
-                        }} 
-                      />
+                      <FormattedMessage content={message.content} />
                     ) : (
                       <p className="whitespace-pre-wrap">{message.content}</p>
                     )}
                     {message.creditsUsed > 0 && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        {message.creditsUsed} credit used
+                      <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
+                        💳 {message.creditsUsed} credit used
                       </p>
                     )}
                   </div>
