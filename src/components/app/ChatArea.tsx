@@ -21,6 +21,57 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  // Format markdown-like text to HTML
+  const formatMessage = (text: string): string => {
+    let formatted = text;
+    
+    // Convert **bold** to <strong>
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    
+    // Convert *italic* to <em>
+    formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+    
+    // Convert ### Headers to h3
+    formatted = formatted.replace(/^### (.*?)$/gm, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>');
+    
+    // Convert ## Headers to h2
+    formatted = formatted.replace(/^## (.*?)$/gm, '<h2 class="text-xl font-semibold mt-4 mb-2">$1</h2>');
+    
+    // Convert # Headers to h1
+    formatted = formatted.replace(/^# (.*?)$/gm, '<h1 class="text-2xl font-bold mt-4 mb-2">$1</h1>');
+    
+    // Convert bullet points (- item or * item)
+    formatted = formatted.replace(/^[•\-\*] (.+)$/gm, '<li class="ml-4">$1</li>');
+    
+    // Wrap consecutive <li> items in <ul>
+    formatted = formatted.replace(/(<li.*?>.*?<\/li>\s*)+/gs, '<ul class="list-disc space-y-1 my-2">const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();</ul>');
+    
+    // Convert numbered lists (1. item, 2. item, etc.)
+    formatted = formatted.replace(/^\d+\.\s+(.+)$/gm, '<li class="ml-4">$1</li>');
+    formatted = formatted.replace(/(<li class="ml-4">.*?<\/li>\s*)+/gs, (match) => {
+      if (!match.includes('list-disc')) {
+        return `<ol class="list-decimal space-y-1 my-2">${match}</ol>`;
+      }
+      return match;
+    });
+    
+    // Convert line breaks to <br> (but not in lists/headers)
+    formatted = formatted.replace(/\n\n/g, '</p><p class="mt-3">');
+    formatted = '<p>' + formatted + '</p>';
+    
+    // Clean up empty paragraphs
+    formatted = formatted.replace(/<p>\s*<\/p>/g, '');
+    formatted = formatted.replace(/<p>(<[uh]l|<h[123])/g, '$1');
+    formatted = formatted.replace(/(<\/[uh]l>|<\/h[123]>)<\/p>/g, '$1');
+    
+    return formatted;
+  };
+
   useEffect(() => {
     if (projectId) {
       const projectMessages = getProjectMessages(projectId);
@@ -259,10 +310,19 @@ Please respond helpfully. If they're asking to update project details or asking 
                         ? 'bg-chat-user text-foreground'
                         : message.role === 'system'
                         ? 'bg-chat-system text-muted-foreground text-sm'
-                        : 'bg-chat-assistant border border-border text-foreground'
+                        : 'bg-chat-assistant border border-border text-foreground prose prose-sm max-w-none dark:prose-invert'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap">{message.content}</p>
+                    {message.role === 'assistant' ? (
+                      <div 
+                        className="formatted-content"
+                        dangerouslySetInnerHTML={{ 
+                          __html: formatMessage(message.content) 
+                        }} 
+                      />
+                    ) : (
+                      <p className="whitespace-pre-wrap">{message.content}</p>
+                    )}
                     {message.creditsUsed > 0 && (
                       <p className="text-xs text-muted-foreground mt-2">
                         {message.creditsUsed} credit used
