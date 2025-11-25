@@ -135,20 +135,27 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
   const parseResearchData = (data: string) => {
     try {
       // Try to extract JSON from markdown code blocks
-      const jsonMatch = data.match(/```json\n([\s\S]*?)\n```/);
+      const jsonMatch = data.match(/```json\s*([\s\S]*?)\s*```/);
       if (jsonMatch) {
         return JSON.parse(jsonMatch[1]);
+      }
+      
+      // Try to find JSON object directly in text
+      const jsonObjectMatch = data.match(/\{[\s\S]*"company_overview"[\s\S]*\}/);
+      if (jsonObjectMatch) {
+        return JSON.parse(jsonObjectMatch[0]);
       }
       
       // Try to parse directly
       return JSON.parse(data);
     } catch (e) {
+      console.error('Failed to parse research data:', e);
       // If not valid JSON, return null
       return null;
     }
   };
 
-  const renderJsonValue = (value: any, depth: number = 0): JSX.Element => {
+  const renderJsonValue = (value: any, depth: number = 0, forceCollapsible: boolean = false): JSX.Element => {
     if (value === null || value === undefined) {
       return <span className="text-muted-foreground italic">null</span>;
     }
@@ -162,6 +169,30 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
     }
 
     if (typeof value === 'string') {
+      // For long strings (like company_overview and key_insights), make them collapsible
+      if (forceCollapsible || value.length > 150) {
+        const itemKey = `string-${depth}-${value.substring(0, 20)}`;
+        const isExpanded = expandedSections.has(itemKey);
+        
+        return (
+          <div>
+            <div 
+              className="cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1"
+              onClick={() => toggleSection(itemKey)}
+            >
+              <div className="flex items-start gap-2">
+                {isExpanded ? 
+                  <ChevronDown className="w-3 h-3 mt-1 flex-shrink-0 text-muted-foreground" /> : 
+                  <ChevronRight className="w-3 h-3 mt-1 flex-shrink-0 text-muted-foreground" />
+                }
+                <span className="text-foreground text-xs">
+                  {isExpanded ? value : `${value.substring(0, 100)}...`}
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      }
       return <span className="text-foreground">{value}</span>;
     }
 
@@ -196,14 +227,20 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
             const itemKey = `${depth}-${key}`;
             const isExpanded = expandedSections.has(itemKey);
             const hasNested = typeof value[key] === 'object' && value[key] !== null;
+            // Check if this is a long text field that should be collapsible
+            const isLongText = typeof value[key] === 'string' && (
+              key === 'company_overview' || 
+              key === 'key_insights' || 
+              value[key].length > 150
+            );
 
             return (
               <div key={key} className="space-y-1">
                 <div 
-                  className={`flex items-start gap-2 ${hasNested ? 'cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1' : ''}`}
-                  onClick={() => hasNested && toggleSection(itemKey)}
+                  className={`flex items-start gap-2 ${(hasNested || isLongText) ? 'cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1' : ''}`}
+                  onClick={() => (hasNested || isLongText) && toggleSection(itemKey)}
                 >
-                  {hasNested && (
+                  {(hasNested || isLongText) && (
                     isExpanded ? 
                       <ChevronDown className="w-3 h-3 mt-1 flex-shrink-0 text-muted-foreground" /> : 
                       <ChevronRight className="w-3 h-3 mt-1 flex-shrink-0 text-muted-foreground" />
@@ -211,13 +248,18 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
                   <span className="text-blue-600 dark:text-blue-400 font-medium text-xs flex-shrink-0">
                     {key}:
                   </span>
-                  {!hasNested && (
+                  {!hasNested && !isLongText && (
                     <div className="flex-1 text-xs break-words">{renderJsonValue(value[key], depth + 1)}</div>
                   )}
+                  {isLongText && !isExpanded && (
+                    <div className="flex-1 text-xs text-foreground break-words">
+                      {String(value[key]).substring(0, 100)}...
+                    </div>
+                  )}
                 </div>
-                {hasNested && isExpanded && (
+                {(hasNested || isLongText) && isExpanded && (
                   <div className="pl-5 border-l-2 border-border ml-1">
-                    <div className="text-xs">{renderJsonValue(value[key], depth + 1)}</div>
+                    <div className="text-xs">{renderJsonValue(value[key], depth + 1, isLongText)}</div>
                   </div>
                 )}
               </div>
