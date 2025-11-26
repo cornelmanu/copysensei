@@ -210,26 +210,31 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
     try {
       // Prepare context for the edge function
       const context = {
+        projectName: project.name,
+        websiteUrl: project.websiteUrl,
         toneOfVoice: project.toneOfVoice,
         researchData: project.researchData,
         customNotes: project.customNotes,
       };
 
-      // For chat (non-copy generation), create a conversational prompt
-      let prompt = currentInput;
-      if (!willCostCredits) {
-        // Add context to make it conversational
-        prompt = `You are CopySensei, a helpful copywriting assistant. The user is working on a project called "${project.name}" for ${project.websiteUrl}. 
-        
-User question: ${currentInput}
+      // Prepare conversation history for ChatGPT
+      const conversationHistory = messages
+        .slice(-10) // Last 10 messages for context
+        .map(msg => ({
+          role: msg.role === 'assistant' ? 'assistant' : 'user',
+          content: msg.content,
+        }));
 
-Please respond helpfully. If they're asking to update project details or asking general questions, respond conversationally without generating actual copy. Only generate marketing copy if explicitly requested.`;
-      }
+      // Add current message
+      conversationHistory.push({
+        role: 'user',
+        content: currentInput,
+      });
 
-      // Call the generate-copy edge function
-      const { data, error } = await supabase.functions.invoke('generate-copy', {
+      // Call the chat-with-gpt edge function
+      const { data, error } = await supabase.functions.invoke('chat-with-gpt', {
         body: {
-          prompt,
+          messages: conversationHistory,
           context,
         },
       });
@@ -242,7 +247,7 @@ Please respond helpfully. If they're asking to update project details or asking 
         throw new Error('No response from AI');
       }
 
-      // Clean up Perplexity citations like [1], [2], etc.
+      // Clean up citations (just in case)
       let cleanedContent = data.generatedCopy;
       cleanedContent = cleanedContent.replace(/\[\d+\]/g, '');
 
