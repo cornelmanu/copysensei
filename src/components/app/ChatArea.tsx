@@ -126,15 +126,23 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
     // Scroll to bottom when messages change or loading state changes
     const scrollToBottom = () => {
       if (scrollContainerRef.current) {
-        const scrollElement = scrollContainerRef.current.querySelector('[data-radix-scroll-area-viewport]');
-        if (scrollElement) {
-          scrollElement.scrollTop = scrollElement.scrollHeight;
+        // Try to find the viewport element
+        const viewport = scrollContainerRef.current.querySelector('[data-radix-scroll-area-viewport]');
+        if (viewport) {
+          viewport.scrollTop = viewport.scrollHeight;
         }
+      }
+      
+      // Also try direct ref
+      if (scrollRef.current) {
+        scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
       }
     };
 
-    // Use setTimeout to ensure DOM has updated
+    // Multiple attempts to ensure scroll happens after render
+    setTimeout(scrollToBottom, 0);
     setTimeout(scrollToBottom, 100);
+    setTimeout(scrollToBottom, 300);
   }, [messages, isLoading]);
 
   const shouldCostCredits = (userMessage: string): boolean => {
@@ -400,6 +408,8 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
               )}
             </>
           )}
+          {/* Scroll anchor at the bottom */}
+          <div ref={scrollRef} />
         </div>
       </ScrollArea>
       </div>
