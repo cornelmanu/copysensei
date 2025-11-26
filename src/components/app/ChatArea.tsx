@@ -240,7 +240,7 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
       });
 
       // Call the chat-with-gpt edge function
-      const { data, error } = await supabase.functions.invoke('chat-with-gpt', {
+      const { data, error } = await supabase.functions.invoke('generate-copy', {
         body: {
           messages: conversationHistory,
           context,
