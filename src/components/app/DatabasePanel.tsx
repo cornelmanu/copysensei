@@ -92,8 +92,7 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
     try {
       const { data: researchResult, error: researchError } = await supabase.functions.invoke('fetch-research', {
         body: { 
-          websiteUrl: project.websiteUrl, 
-          projectName: project.name 
+          websiteUrl: project.websiteUrl
         }
       });
 
@@ -328,7 +327,7 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
                 Refresh
               </Button>
             </div>
-            <div className="text-xs bg-muted p-3 rounded-md max-h-[500px] overflow-y-auto">
+            <div className="text-xs bg-muted p-3 rounded-md max-h-[600px] overflow-y-auto">
               {parsedResearch ? (
                 <div className="space-y-2">
                   {renderJsonValue(parsedResearch)}
