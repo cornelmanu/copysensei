@@ -48,9 +48,10 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
 
     const formatInline = (text: string): string => {
       return text
-        .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
-        .replace(/\*(.+?)\*/g, '<em class="italic">$1</em>')
-        .replace(/`(.+?)`/g, '<code class="bg-muted px-1 py-0.5 rounded text-sm">$1</code>');
+        .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>') // Bold + italic
+        .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>') // Bold
+        .replace(/\*(.+?)\*/g, '<em class="italic">$1</em>') // Italic
+        .replace(/`(.+?)`/g, '<code class="bg-muted px-1 py-0.5 rounded text-sm">$1</code>'); // Code
     };
 
     lines.forEach((line, idx) => {
@@ -59,13 +60,16 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
       // Headers
       if (trimmed.startsWith('###')) {
         flushList();
-        elements.push(<h3 key={elements.length} className="text-base font-semibold mt-4 mb-2">{trimmed.replace(/^###\s*/, '')}</h3>);
+        const headerText = trimmed.replace(/^###\s*/, '').replace(/\*\*/g, '');
+        elements.push(<h3 key={elements.length} className="text-base font-semibold mt-4 mb-2">{headerText}</h3>);
       } else if (trimmed.startsWith('##')) {
         flushList();
-        elements.push(<h2 key={elements.length} className="text-lg font-semibold mt-4 mb-2">{trimmed.replace(/^##\s*/, '')}</h2>);
+        const headerText = trimmed.replace(/^##\s*/, '').replace(/\*\*/g, '');
+        elements.push(<h2 key={elements.length} className="text-lg font-semibold mt-4 mb-2">{headerText}</h2>);
       } else if (trimmed.startsWith('#')) {
         flushList();
-        elements.push(<h1 key={elements.length} className="text-xl font-bold mt-4 mb-2">{trimmed.replace(/^#\s*/, '')}</h1>);
+        const headerText = trimmed.replace(/^#\s*/, '').replace(/\*\*/g, '');
+        elements.push(<h1 key={elements.length} className="text-xl font-bold mt-4 mb-2">{headerText}</h1>);
       }
       // Bullet points
       else if (trimmed.match(/^[-*•]\s+/)) {
@@ -98,13 +102,25 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
       // Regular paragraph
       else {
         flushList();
-        elements.push(
-          <p 
-            key={elements.length} 
-            className="mb-2" 
-            dangerouslySetInnerHTML={{ __html: formatInline(trimmed) }} 
-          />
-        );
+        // Check if line starts with bold text (like "**Headline:**")
+        if (trimmed.match(/^\*\*[^*]+\*\*:/)) {
+          // This is a label-style line, make it stand out
+          elements.push(
+            <p 
+              key={elements.length} 
+              className="mb-2 font-medium" 
+              dangerouslySetInnerHTML={{ __html: formatInline(trimmed) }} 
+            />
+          );
+        } else {
+          elements.push(
+            <p 
+              key={elements.length} 
+              className="mb-2" 
+              dangerouslySetInnerHTML={{ __html: formatInline(trimmed) }} 
+            />
+          );
+        }
       }
     });
 
@@ -239,7 +255,7 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
         content: currentInput,
       });
 
-      // Call the chat-with-gpt edge function
+      // Call the generate-copy edge function with conversation history
       const { data, error } = await supabase.functions.invoke('generate-copy', {
         body: {
           messages: conversationHistory,
