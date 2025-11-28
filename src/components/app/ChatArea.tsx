@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Sparkles, PanelRightClose, PanelRightOpen, Loader2 } from 'lucide-react';
+import { Send, Sparkles, PanelRightClose, PanelRightOpen, Loader2, Copy, Check } from 'lucide-react';
 import { getProjectMessages, saveMessage, getProject, getUser, updateUser } from '@/lib/storage';
 import { supabase } from '@/integrations/supabase/client';
 import { ChatMessage } from '@/types';
@@ -18,6 +18,7 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -26,7 +27,15 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
   const FormattedMessage = ({ content }: { content: string }) => {
     // Remove Perplexity citations [1], [2], etc.
     const cleanContent = content.replace(/\[\d+\]/g, '');
-    const lines = cleanContent.split('\n');
+    
+    // Split content into main copy and explanation if present
+    const whyItWorksMatch = cleanContent.match(/---\s*WHY THIS WORKS\s*---\s*([\s\S]*)/i);
+    const mainContent = whyItWorksMatch 
+      ? cleanContent.substring(0, whyItWorksMatch.index).trim()
+      : cleanContent;
+    const explanation = whyItWorksMatch ? whyItWorksMatch[1].trim() : null;
+    
+    const lines = mainContent.split('\n');
     const elements: JSX.Element[] = [];
     let listItems: string[] = [];
     let listType: 'ul' | 'ol' | null = null;
@@ -126,7 +135,58 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
 
     flushList(); // Flush any remaining list
 
-    return <div className="space-y-1">{elements}</div>;
+    return (
+      <div>
+        <div className="space-y-1">{elements}</div>
+        {explanation && (
+          <div className="mt-4 pt-4 border-t border-border">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <h4 className="text-sm font-semibold text-primary">Why This Copy Works</h4>
+            </div>
+            <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-md">
+              <FormattedExplanation content={explanation} />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Simpler formatter for explanation text
+  const FormattedExplanation = ({ content }: { content: string }) => {
+    return (
+      <div 
+        className="space-y-2"
+        dangerouslySetInnerHTML={{ 
+          __html: content
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line)
+            .map(line => {
+              // Bold
+              let formatted = line.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>');
+              // Italic
+              formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>');
+              return `<p class="mb-1">${formatted}</p>`;
+            })
+            .join('')
+        }} 
+      />
+    );
+  };
+
+  const handleCopyMessage = (content: string, messageId: string) => {
+    // Remove the "Why This Works" section before copying
+    const mainContent = content.split(/---\s*WHY THIS WORKS\s*---/i)[0].trim();
+    
+    navigator.clipboard.writeText(mainContent);
+    setCopiedMessageId(messageId);
+    toast({
+      title: 'Copied!',
+      description: 'Copy has been copied to clipboard',
+    });
+    setTimeout(() => setCopiedMessageId(null), 2000);
   };
 
   useEffect(() => {
@@ -318,7 +378,7 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
       const { data, error } = await supabase.functions.invoke('generate-copy', {
         body: {
           messages: conversationHistory,
-          context,
+          context: enhancedContext,
         },
       });
 
@@ -448,7 +508,7 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
                   }`}
                 >
                   <div
-                    className={`rounded-lg px-4 py-3 max-w-[80%] ${
+                    className={`rounded-lg px-4 py-3 max-w-[80%] relative group ${
                       message.role === 'user'
                         ? 'bg-chat-user text-foreground'
                         : message.role === 'system'
@@ -456,6 +516,20 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
                         : 'bg-chat-assistant border border-border text-foreground'
                     }`}
                   >
+                    {message.role === 'assistant' && message.messageType === 'copy_generation' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => handleCopyMessage(message.content, message.id)}
+                      >
+                        {copiedMessageId === message.id ? (
+                          <Check className="w-4 h-4 text-green-600" />
+                        ) : (
+                          <Copy className="w-4 h-4" />
+                        )}
+                      </Button>
+                    )}
                     {message.role === 'assistant' ? (
                       <FormattedMessage content={message.content} />
                     ) : (
