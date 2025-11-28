@@ -173,13 +173,62 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
       'write me',
       'create me',
       'generate me',
+      'create a',
+      'write a',
+      'make a',
+      'give me a',
+      'craft',
+      'develop copy',
+      'produce',
     ];
 
     const lowerMessage = userMessage.toLowerCase();
     return copyGenerationKeywords.some(keyword => lowerMessage.includes(keyword));
   };
 
-  const handleSend = async (isGenerateCopy: boolean = false) => {
+  const isSimpleChat = (userMessage: string): boolean => {
+    // Detect if user is just trying to chat (not asking for copy or project updates)
+    const projectUpdateKeywords = [
+      'change',
+      'update',
+      'set',
+      'modify',
+      'adjust',
+      'tone',
+      'notes',
+      'style',
+    ];
+    
+    const lowerMessage = userMessage.toLowerCase();
+    
+    // If it's copy generation, it's fine
+    if (shouldCostCredits(lowerMessage)) {
+      return false;
+    }
+    
+    // If it's project updates, it's fine
+    if (projectUpdateKeywords.some(keyword => lowerMessage.includes(keyword))) {
+      return false;
+    }
+    
+    // Check for common chat phrases that don't serve a purpose
+    const chatPhrases = [
+      'how are you',
+      'what can you do',
+      'tell me about',
+      'what is',
+      'who are you',
+      'hello',
+      'hi ',
+      'hey ',
+      'thanks',
+      'thank you',
+    ];
+    
+    return chatPhrases.some(phrase => lowerMessage.includes(phrase));
+  };
+
+  const handleSend = async () => {
     if (!input.trim() || !projectId || isLoading) return;
 
     const project = getProject(projectId);
@@ -202,8 +251,18 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
       return;
     }
 
+    // Check if user is trying to just chat (discourage this)
+    if (isSimpleChat(input)) {
+      toast({
+        title: 'Ask CopySensei to Generate Copy',
+        description: 'To get the most value, ask me to write or generate specific copy for your project. Example: "Write a headline for my homepage"',
+        variant: 'default',
+      });
+      return;
+    }
+
     // Check if this will cost credits
-    const willCostCredits = isGenerateCopy || shouldCostCredits(input);
+    const willCostCredits = shouldCostCredits(input);
     
     if (willCostCredits && user.credits < 1) {
       toast({
@@ -445,29 +504,27 @@ const ChatArea = ({ projectId, onTogglePanel, isPanelOpen }: ChatAreaProps) => {
           </div>
           <div className="flex gap-2 justify-end">
             <Button 
-              variant="outline" 
-              size="lg"
-              onClick={() => handleSend(true)}
-              disabled={!input.trim() || isLoading || (user?.credits || 0) < 1}
-            >
-              {isLoading ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Sparkles className="w-4 h-4 mr-2" />
-              )}
-              Generate Copy (1 credit)
-            </Button>
-            <Button 
-              onClick={() => handleSend(false)} 
+              onClick={handleSend} 
               size="lg"
               disabled={!input.trim() || isLoading}
+              className="min-w-[140px]"
             >
               {isLoading ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Generating...
+                </>
+              ) : shouldCostCredits(input) ? (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Generate (1 credit)
+                </>
               ) : (
-                <Send className="w-4 h-4 mr-2" />
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Send
+                </>
               )}
-              Send
             </Button>
           </div>
         </div>
