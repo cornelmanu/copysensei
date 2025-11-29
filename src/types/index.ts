@@ -12,6 +12,7 @@ export interface Project {
   websiteUrl: string;
   toneOfVoice: ToneOfVoice;
   researchData: any;
+  strategyBrief: string | null; // NEW: The synthesized strategy brief
   customNotes: string;
   createdAt: string;
   updatedAt: string;
