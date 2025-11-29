@@ -175,7 +175,94 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
     }
   };
 
-  const toggleSection = (key: string) => {
+  // Format strategy brief markdown
+  const FormattedStrategyBrief = ({ content }: { content: string }) => {
+    const lines = content.split('\n');
+    const elements: JSX.Element[] = [];
+
+    lines.forEach((line, idx) => {
+      const trimmed = line.trim();
+
+      // H1 headers (# Header)
+      if (trimmed.match(/^#\s+[^#]/)) {
+        elements.push(
+          <h1 key={idx} className="text-xl font-bold mt-6 mb-3 text-foreground">
+            {trimmed.replace(/^#\s+/, '')}
+          </h1>
+        );
+      }
+      // H2 headers (## Header)
+      else if (trimmed.match(/^##\s+[^#]/)) {
+        elements.push(
+          <h2 key={idx} className="text-lg font-semibold mt-5 mb-2 text-foreground">
+            {trimmed.replace(/^##\s+/, '')}
+          </h2>
+        );
+      }
+      // H3 headers (### Header)
+      else if (trimmed.match(/^###\s+/)) {
+        elements.push(
+          <h3 key={idx} className="text-base font-semibold mt-4 mb-2 text-foreground">
+            {trimmed.replace(/^###\s+/, '')}
+          </h3>
+        );
+      }
+      // Bullet points
+      else if (trimmed.match(/^[-*•]\s+/)) {
+        const content = trimmed.replace(/^[-*•]\s+/, '');
+        elements.push(
+          <li 
+            key={idx} 
+            className="ml-4 mb-1 text-foreground"
+            dangerouslySetInnerHTML={{ 
+              __html: content
+                .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            }}
+          />
+        );
+      }
+      // Numbered lists
+      else if (trimmed.match(/^\d+\.\s+/)) {
+        const content = trimmed.replace(/^\d+\.\s+/, '');
+        elements.push(
+          <li 
+            key={idx} 
+            className="ml-4 mb-1 text-foreground list-decimal"
+            dangerouslySetInnerHTML={{ 
+              __html: content
+                .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            }}
+          />
+        );
+      }
+      // Horizontal rule
+      else if (trimmed === '---' || trimmed === '___') {
+        elements.push(<hr key={idx} className="my-4 border-border" />);
+      }
+      // Empty line
+      else if (trimmed === '') {
+        elements.push(<div key={idx} className="h-2" />);
+      }
+      // Regular paragraph
+      else {
+        elements.push(
+          <p 
+            key={idx} 
+            className="mb-2 text-foreground leading-relaxed"
+            dangerouslySetInnerHTML={{ 
+              __html: trimmed
+                .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            }}
+          />
+        );
+      }
+    });
+
+    return <div className="space-y-1">{elements}</div>;
+  };
     const newExpanded = new Set(expandedSections);
     if (newExpanded.has(key)) {
       newExpanded.delete(key);
@@ -383,11 +470,9 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
                 </Button>
               )}
             </div>
-            <div className="text-xs bg-muted p-3 rounded-md max-h-[600px] overflow-y-auto">
+            <div className="text-xs bg-muted p-3 rounded-md max-h-[600px] overflow-y-auto prose prose-sm max-w-none">
               {project.strategyBrief ? (
-                <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap">
-                  {project.strategyBrief}
-                </div>
+                <FormattedStrategyBrief content={project.strategyBrief} />
               ) : isSynthesizing ? (
                 <p className="text-muted-foreground">Generating comprehensive strategy brief...</p>
               ) : project.researchData ? (
