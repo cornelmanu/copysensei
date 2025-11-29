@@ -23,6 +23,7 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
   const [newDocContent, setNewDocContent] = useState('');
   const [newDocName, setNewDocName] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -99,7 +100,11 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
       if (researchError) {
         console.error('Research fetch error:', researchError);
         toast.error('Failed to fetch research');
-      } else if (researchResult?.researchData) {
+        setIsRefreshing(false);
+        return;
+      }
+      
+      if (researchResult?.researchData) {
         // Update project in database
         await supabase
           .from('projects')
@@ -112,12 +117,61 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
         setProject(updated);
 
         toast.success('Research data refreshed successfully!');
+        
+        // Now auto-generate strategy brief
+        await generateStrategyBrief(updated);
       }
     } catch (error) {
       console.error('Error refreshing research:', error);
       toast.error('Failed to refresh research');
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const generateStrategyBrief = async (projectData?: Project) => {
+    const proj = projectData || project;
+    if (!proj || !proj.researchData) return;
+    
+    setIsSynthesizing(true);
+    toast.info('Generating strategy brief...');
+
+    try {
+      const docs = getProjectDocuments(projectId);
+      
+      const { data: briefResult, error: briefError } = await supabase.functions.invoke('synthesize-strategy', {
+        body: {
+          researchData: proj.researchData,
+          documents: docs,
+          projectInfo: {
+            websiteUrl: proj.websiteUrl,
+            toneOfVoice: proj.toneOfVoice,
+            customNotes: proj.customNotes,
+          }
+        }
+      });
+
+      if (briefError) {
+        console.error('Strategy synthesis error:', briefError);
+        toast.error('Failed to generate strategy brief');
+      } else if (briefResult?.strategyBrief) {
+        // Update project with strategy brief
+        await supabase
+          .from('projects')
+          .update({ strategy_brief: briefResult.strategyBrief })
+          .eq('id', projectId);
+
+        const updated = { ...proj, strategyBrief: briefResult.strategyBrief };
+        saveProject(updated);
+        setProject(updated);
+
+        toast.success('Strategy brief generated!');
+      }
+    } catch (error) {
+      console.error('Error generating strategy:', error);
+      toast.error('Failed to generate strategy brief');
+    } finally {
+      setIsSynthesizing(false);
     }
   };
 
@@ -308,6 +362,44 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
                   <SelectItem value="playful">Playful</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Strategy Brief */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-sm text-card-foreground">Strategy Brief</h4>
+              {project.researchData && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => generateStrategyBrief()}
+                  disabled={isSynthesizing}
+                >
+                  <RefreshCw className={`w-3 h-3 mr-1 ${isSynthesizing ? 'animate-spin' : ''}`} />
+                  {isSynthesizing ? 'Generating...' : 'Regenerate'}
+                </Button>
+              )}
+            </div>
+            <div className="text-xs bg-muted p-3 rounded-md max-h-[600px] overflow-y-auto">
+              {project.strategyBrief ? (
+                <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap">
+                  {project.strategyBrief}
+                </div>
+              ) : isSynthesizing ? (
+                <p className="text-muted-foreground">Generating comprehensive strategy brief...</p>
+              ) : project.researchData ? (
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground mb-2">No strategy brief yet</p>
+                  <Button size="sm" onClick={() => generateStrategyBrief()}>
+                    Generate Strategy Brief
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">Run research first to generate strategy brief</p>
+              )}
             </div>
           </div>
 
