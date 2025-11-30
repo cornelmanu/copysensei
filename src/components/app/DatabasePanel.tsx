@@ -263,6 +263,8 @@ const DatabasePanel = ({ projectId, onClose }: DatabasePanelProps) => {
 
     return <div className="space-y-1">{elements}</div>;
   };
+
+  const toggleSection = (key: string) => {
     const newExpanded = new Set(expandedSections);
     if (newExpanded.has(key)) {
       newExpanded.delete(key);
